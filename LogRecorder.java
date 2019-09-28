@@ -1,4 +1,4 @@
-package cn.dxjia.logrecorder;
+package com.javishuang;
 
 import android.content.Context;
 import android.os.Environment;
@@ -41,6 +41,7 @@ public class LogRecorder {
     public int mLevel;
     public List<String> mFilterTags = new ArrayList<>();
     public int mPID = INVALID_PID;
+    private int mFileLiveDay;
 
     public boolean mUseLogcatFileOut = false;
 
@@ -75,6 +76,17 @@ public class LogRecorder {
         File file = new File(mFolderPath);
         if (!file.exists()) {
             file.mkdirs();
+        }else{
+            if(mFileLiveDay > -1){
+                Date d = new Date();
+                for(File f:file.listFiles()){
+                    Date lastModDate = new Date(f.lastModified());
+                    int day = differentDaysByMillisecond(lastModDate,d);
+                    if(mFileLiveDay<day){
+                        f.delete();
+                    }
+                }
+            }
         }
 
         String cmdStr = collectLogcatCommand();
@@ -280,6 +292,12 @@ public class LogRecorder {
         }
     }
 
+    private int differentDaysByMillisecond(Date date1,Date date2)
+    {
+        int days = (int) ((date2.getTime() - date1.getTime()) / (1000*3600*24));
+        return days;
+    }
+
     public static class Builder {
 
         /**
@@ -312,6 +330,12 @@ public class LogRecorder {
          * in k-bytes, ex. set to 16, is 16KB limitation.
          */
         private int mLogFileSizeLimitation = 0;
+
+        /**
+         *  set log store time
+         *  unit day(-1 forever)
+         */
+        private int mLogFileLiveDay=0;
 
         /**
          * log level, see android.util.Log, 2 - 7,
@@ -420,6 +444,11 @@ public class LogRecorder {
             return this;
         }
 
+        public Builder setLogFileLiveDay(int logFileLiveDay){
+            this.mLogFileLiveDay = logFileLiveDay;
+            return this;
+        }
+
         /**
          * add log filterspec tag name, can add multiple ones,
          * they use the same log level set by setLogLevel()
@@ -525,6 +554,7 @@ public class LogRecorder {
             logRecorder.mFolderPath = mLogFolderPath;
             logRecorder.mFileSuffix = mLogFileNameSuffix;
             logRecorder.mFileSizeLimitation = mLogFileSizeLimitation;
+            logRecorder.mFileLiveDay = mLogFileLiveDay;
             logRecorder.mLevel = mLogLevel;
             if (!mLogFilterTags.isEmpty()) {
                 for (int i = 0; i < mLogFilterTags.size(); i++) {
